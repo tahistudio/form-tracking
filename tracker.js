@@ -20,6 +20,9 @@ function getDeviceDetails() {
     return { os: os, type: type };
 }
 
+// Maximum number of pages retained in the navigation trail
+const MAX_HISTORY = 15;
+
 document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     
@@ -43,16 +46,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /**
      * PAGE HISTORY & NAVIGATION
+     * Session-scoped so the trail resets per visit, and capped at MAX_HISTORY.
      */
     const currentPath = window.location.pathname;
-    let history = JSON.parse(localStorage.getItem('page_history_array') || "[]");
+    let history = JSON.parse(sessionStorage.getItem('page_history_array') || "[]");
     
     // Only add to history if it's a new page load or refresh
     if (history[history.length - 1] !== currentPath) {
         history.push(currentPath);
-        localStorage.setItem('page_history_array', JSON.stringify(history));
+        // Keep only the most recent entries so the field can't grow unbounded
+        if (history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY);
+        sessionStorage.setItem('page_history_array', JSON.stringify(history));
     }
-    localStorage.setItem('page_history', history.join(' > '));
+    sessionStorage.setItem('page_history', history.join(' > '));
 
     const currentPage = window.location.href;
     const previousPage = document.referrer || 'direct';
@@ -60,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
     localStorage.setItem('current_page_url', currentPage);
 
     if (!sessionStorage.getItem('session_id')) {
-        sessionStorage.setItem('session_id', 'sess_' + Math.random().toString(36).substr(2, 9));
+        sessionStorage.setItem('session_id', 'sess_' + Math.random().toString(36).slice(2, 11));
     }
 
     if (!localStorage.getItem('landing_page')) {
@@ -75,15 +81,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /**
      * ENGAGEMENT TRACKING
+     * Page views and active seconds are session-scoped, not lifetime totals.
      */
-    let pvs = parseInt(localStorage.getItem('pv_total') || 0);
-    localStorage.setItem('pv_total', pvs + 1);
+    let pvs = parseInt(sessionStorage.getItem('pv_total') || 0);
+    sessionStorage.setItem('pv_total', pvs + 1);
 
-    let activeSec = parseInt(localStorage.getItem('active_sec') || 0);
+    let activeSec = parseInt(sessionStorage.getItem('active_sec') || 0);
     setInterval(() => {
         if (!document.hidden) {
             activeSec++;
-            localStorage.setItem('active_sec', activeSec);
+            sessionStorage.setItem('active_sec', activeSec);
         }
     }, 1000);
 
@@ -101,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'utm_content': localStorage.getItem('utm_content'),
             'click_id': localStorage.getItem('click_id'),
             'landing_page': localStorage.getItem('landing_page'),
-            'page_history': localStorage.getItem('page_history'),
+            'page_history': sessionStorage.getItem('page_history'),
             'last_referrer': localStorage.getItem('last_referrer'),
             'current_page_url': localStorage.getItem('current_page_url'),
             'session_id': sessionStorage.getItem('session_id'),
@@ -109,8 +116,8 @@ document.addEventListener('DOMContentLoaded', function() {
             'device_type': localStorage.getItem('device_type'),
             'browser_language': localStorage.getItem('browser_language'),
             'user_timezone': localStorage.getItem('user_timezone'),
-            'pv_total': localStorage.getItem('pv_total'),
-            'active_sec': localStorage.getItem('active_sec'),
+            'pv_total': sessionStorage.getItem('pv_total'),
+            'active_sec': sessionStorage.getItem('active_sec'),
             'submission_timestamp': new Date().toISOString()
         };
 
